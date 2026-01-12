@@ -13,9 +13,9 @@ export const EVENT_GAP = 6;
 export const getEventColor = (event: FleetEvent, vehicle?: Vehicle): string => {
   const status = event.status?.toLowerCase() || '';
 
-  // 1. History / Returned (已还车) - Universal Grey
+  // 1. History / Returned (已还车) - Light Sky Blue (Contrast against Slate weekend)
   if (status.includes('returned') || status.includes('completed') || status.includes('done') || status.includes('past')) {
-    return 'bg-slate-100 text-slate-500 border border-slate-200'; 
+    return 'bg-sky-100 text-sky-700 border border-sky-300 shadow-sm'; 
   }
 
   switch (event.type) {
@@ -43,12 +43,12 @@ export const getEventColor = (event: FleetEvent, vehicle?: Vehicle): string => {
     case EventType.BLOCK:
       // Distinguish Internal Use vs Ops Lock based on reason
       const reason = event.reason?.toLowerCase() || '';
-      // Ops Lock (运营锁定) - Pink
+      // Ops Lock (运营锁定) - Purple
       if (reason.includes('operation') || reason.includes('ops') || reason.includes('lock')) {
-          return 'bg-pink-600 text-white shadow-sm border border-pink-700'; 
+          return 'bg-purple-600 text-white shadow-sm border border-purple-700'; 
       }
-      // Internal Use (内部使用) - Purple
-      return 'bg-purple-600 text-white shadow-sm border border-purple-700'; 
+      // Internal Use (内部使用) - Cyan
+      return 'bg-cyan-600 text-white shadow-sm border border-cyan-700'; 
 
     default:
       return 'bg-gray-500 text-white';
@@ -114,13 +114,6 @@ export const MOCK_VEHICLES: Vehicle[] = [
 ];
 
 const today = new Date();
-const addDays = (days: number) => {
-  const d = new Date(today);
-  d.setDate(d.getDate() + days);
-  d.setHours(12, 0, 0, 0); // Default middle of day
-  return d.toISOString();
-};
-
 const addDate = (days: number, hours: number = 10, minutes: number = 0) => {
   const d = new Date(today);
   d.setDate(d.getDate() + days);
@@ -129,193 +122,242 @@ const addDate = (days: number, hours: number = 10, minutes: number = 0) => {
 };
 
 export const MOCK_EVENTS: FleetEvent[] = [
-  // --- PENDING EVENTS (Mock Data Added) ---
+  // --- PENDING / UNASSIGNED QUEUE ---
   {
-    id: 'pending_1',
+    id: 'JRT624503',
     type: EventType.BOOKING_UNASSIGNED,
     groupId: 'g1',
     vehicleId: null,
     startDate: addDate(1, 10, 0),
     endDate: addDate(4, 10, 0),
-    customerName: 'Pending Guest A',
-    reservationId: 'PND-1001',
-    status: 'Pending Assignment',
+    customerName: 'Pending A',
+    reservationId: 'JRT624503',
+    status: 'Pending',
     modelPreference: 'Toyota Yaris',
     pickupLocation: 'Narita T1',
     dropoffLocation: 'Narita T1',
   },
   {
-    id: 'pending_2',
+    id: 'YTT416327',
     type: EventType.BOOKING_UNASSIGNED,
     groupId: 'g2',
     vehicleId: null,
     startDate: addDate(2, 14, 0),
     endDate: addDate(5, 12, 0),
-    customerName: 'Pending Guest B',
-    reservationId: 'PND-1002',
-    status: 'Pending Assignment',
+    customerName: 'Pending B',
+    reservationId: 'YTT416327',
+    status: 'Pending',
     modelPreference: 'Mazda 3',
     pickupLocation: 'Haneda',
     dropoffLocation: 'Haneda',
   },
 
-  // --- Group 1 Events ---
-  // Past Booking (Returned)
+  // --- VEHICLE 1: Yaris (v1) ---
   {
-    id: 'e_past_1',
+    id: 'TNA568495',
     type: EventType.BOOKING_ASSIGNED,
     groupId: 'g1',
     vehicleId: 'v1',
-    startDate: addDate(-5, 9, 0),
-    endDate: addDate(-2, 18, 0),
+    startDate: addDate(-4, 9, 0),
+    endDate: addDate(-1, 18, 0),
     customerName: 'History Log',
-    reservationId: 'JRT624503',
+    reservationId: 'TNA568495',
     status: 'Returned', 
     pickupLocation: 'Narita T1',
     dropoffLocation: 'Narita T1',
   },
-  // Current One-Way (Picked Up)
   {
-    id: 'e1',
+    id: 'HTG995846',
     type: EventType.BOOKING_ASSIGNED,
     groupId: 'g1',
-    vehicleId: 'v1', 
-    startDate: addDate(-1, 14, 0),
-    endDate: addDate(4, 10, 0),
-    customerName: 'Tanaka Sato',
-    reservationId: 'RES-2001',
-    status: 'Picked Up', 
-    pickupLocation: 'Narita T2',
-    dropoffLocation: 'Narita T2', 
-    isLocked: true 
+    vehicleId: 'v1',
+    startDate: addDate(0, 10, 0),
+    endDate: addDate(2, 10, 0),
+    customerName: 'Active User',
+    reservationId: 'HTG995846',
+    status: 'Picked Up', // Active
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
   },
-  
-  // Maintenance
   {
-    id: 'UEU655091', 
+    id: 'UEU655091',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g1',
+    vehicleId: 'v1',
+    startDate: addDate(3, 14, 0),
+    endDate: addDate(6, 14, 0),
+    customerName: 'Future User',
+    reservationId: 'UEU655091',
+    status: 'Confirmed',
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+    isLocked: true, // Locked
+  },
+
+  // --- VEHICLE 2: Honda Fit (v2) ---
+  {
+    id: 'EZG073972',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g1',
+    vehicleId: 'v2',
+    startDate: addDate(1, 9, 0),
+    endDate: addDate(5, 18, 0),
+    customerName: 'VIP Customer',
+    reservationId: 'EZG073972',
+    status: 'Confirmed',
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+    notes: 'Needs child seat.', // Has Notes
+    isLocked: true, 
+  },
+
+  // --- VEHICLE 3: Nissan Note (v3) [Maintenance] ---
+  {
+    id: 'MAINT-V3', 
     type: EventType.MAINTENANCE,
     groupId: 'g1',
     vehicleId: 'v3', 
     startDate: addDate(-2, 8, 0),
-    endDate: addDate(6, 18, 0),
-    maintenanceType: 'Inspection',
+    endDate: addDate(4, 18, 0),
+    maintenanceType: 'Major Repair',
     status: 'In Progress',
-    notes: 'Routine 6-month safety check. Check brake pads.',
+    notes: 'Engine check required.',
   },
 
-  // Temp Hold (Previously Stop Sale)
+  // --- VEHICLE 4: Yaris (v4) ---
   {
-    id: 'temp_hold_1',
+    id: 'ZAE764553',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g1',
+    vehicleId: 'v4',
+    startDate: addDate(1, 10, 0),
+    endDate: addDate(3, 15, 0),
+    customerName: 'One Way User',
+    reservationId: 'ZAE764553',
+    status: 'Confirmed', 
+    pickupLocation: 'Haneda', // Cross Store
+    dropoffLocation: 'Narita T1', // Different return
+    notes: 'Cross store return.',
+  },
+
+  // --- VEHICLE 5: Yaris (v5) [Backup] ---
+  {
+    id: 'HLD-V5',
     type: EventType.STOP_SALE,
     groupId: 'g1',
     vehicleId: 'v5',
     startDate: addDate(0, 9, 0),
     endDate: addDate(3, 18, 0),
     status: 'Hold',
-    reason: 'Inventory Control',
-    notes: 'Holding for potential VIP group overflow.'
+    reason: 'Safety Recall',
   },
 
-  // --- Group 2 Events ---
-  // Corolla - Active
+  // --- VEHICLE 6: Corolla (v6) ---
   {
-    id: 'res-2001',
+    id: 'VGA821249',
     type: EventType.BOOKING_ASSIGNED,
     groupId: 'g2',
     vehicleId: 'v6',
-    startDate: addDate(-1, 9, 0),
-    endDate: addDate(2, 18, 0),
-    customerName: 'Liu Wei',
-    reservationId: 'RES-2001',
-    status: 'Picked Up',
+    startDate: addDate(0, 10, 0),
+    endDate: addDate(0, 16, 0), // Same day 6 hours
+    customerName: 'Short Trip',
+    reservationId: 'VGA821249',
+    status: 'Confirmed',
+    pickupLocation: 'Narita T2',
+    dropoffLocation: 'Narita T2',
+  },
+  {
+    id: 'GGS490065',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g2',
+    vehicleId: 'v6',
+    startDate: addDate(1, 9, 0),
+    endDate: addDate(4, 9, 0), 
+    customerName: 'Next Customer',
+    reservationId: 'GGS490065',
+    status: 'Confirmed',
     pickupLocation: 'Narita T2',
     dropoffLocation: 'Narita T2',
   },
 
-  // Mazda 3 2439 - Two Bookings
+  // --- VEHICLE 7: Mazda 3 (v7) ---
   {
-    id: 'res-2005',
+    id: 'XFT359978',
     type: EventType.BOOKING_ASSIGNED,
     groupId: 'g2',
     vehicleId: 'v7',
-    startDate: addDate(0, 10, 0),
-    endDate: addDate(2, 10, 0),
-    customerName: 'Emily Clark',
-    reservationId: 'RES-2005',
-    status: 'Returned', 
+    startDate: addDate(-2, 10, 0),
+    endDate: addDate(1, 10, 0), 
+    customerName: 'Returning Today',
+    reservationId: 'XFT359978',
+    status: 'Picked Up', 
     pickupLocation: 'Narita T1',
     dropoffLocation: 'Narita T1',
   },
   {
-    id: 'res-2008',
-    type: EventType.BOOKING_ASSIGNED,
+    id: 'BLK-V7',
+    type: EventType.BLOCK, 
     groupId: 'g2',
-    vehicleId: 'v7',
-    startDate: addDate(2, 8, 0),
-    endDate: addDate(4, 20, 0),
-    customerName: 'Hiroshi T.',
-    reservationId: 'RES-2008',
-    status: 'Confirmed', 
-    pickupLocation: 'Narita T1',
-    dropoffLocation: 'Narita T1',
+    vehicleId: 'v7', 
+    startDate: addDate(2, 9, 0),
+    endDate: addDate(4, 18, 0),
+    reason: 'Internal Use', // Internal Block
+    status: 'Active',
+    notes: 'Sales demo',
   },
-  
-  // Mazda 3 2443 - VIP Lock -> Internal Use
+
+  // --- VEHICLE 8: Mazda 3 (v8) ---
   {
-    id: 'e_g2_locked_new',
-    type: EventType.BLOCK, // Changed to BLOCK for Internal Use example
+    id: 'OPS-V8',
+    type: EventType.BLOCK, 
     groupId: 'g2',
     vehicleId: 'v8', 
-    startDate: addDate(1, 14, 0),
-    endDate: addDate(4, 10, 0),
-    customerName: 'VIP Guest',
-    reason: 'Internal Use', // Should be Purple
-    status: 'Confirmed',
-    isLocked: true,
-    pickupLocation: 'Narita T1',
-    dropoffLocation: 'Narita T1',
-    notes: 'VIP Client'
+    startDate: addDate(0, 9, 0),
+    endDate: addDate(3, 12, 0),
+    reason: 'Ops Lock', // Operational Lock
+    status: 'Active',
   },
 
-  // Civic - Cross Store -> Ops Lock
+  // --- VEHICLE 10: RAV4 (v10) ---
   {
-    id: 'e_g2_cross_new',
-    type: EventType.BLOCK, // Changed to BLOCK for Ops Lock example
-    groupId: 'g2',
-    vehicleId: 'v9', 
-    startDate: addDate(2, 9, 0),
-    endDate: addDate(5, 18, 0),
-    reason: 'Ops Lock', // Should be Pink
-    status: 'Confirmed',
-  },
-
-  // --- Group 3 Events ---
-  // RAV4 - Long Rental
-  {
-    id: 'e6',
+    id: 'HYJ360059',
     type: EventType.BOOKING_ASSIGNED,
     groupId: 'g3',
     vehicleId: 'v10', 
-    startDate: addDate(-2, 14, 0),
-    endDate: addDate(8, 10, 0),
-    customerName: 'Wang L.',
-    reservationId: 'RES-2022',
+    startDate: addDate(-1, 10, 0),
+    endDate: addDate(6, 10, 0), // Long rental
+    customerName: 'Long Term',
+    reservationId: 'HYJ360059',
     status: 'Picked Up',
     pickupLocation: 'Narita T1',
-    dropoffLocation: 'Narita T2',
+    dropoffLocation: 'Narita T1',
+    notes: 'Airport pickup confirmed',
     isLocked: true,
   },
-
-  // v11 short
-  {
-    id: 'e7',
+  
+  // --- VEHICLE 11: RAV4 (v11) ---
+   {
+    id: 'KCG708735',
     type: EventType.BOOKING_ASSIGNED,
     groupId: 'g3',
     vehicleId: 'v11',
-    startDate: addDate(1, 12, 0),
-    endDate: addDate(3, 12, 0),
-    customerName: 'Sarah J.',
-    reservationId: 'RES-3001',
+    startDate: addDate(0, 8, 0),
+    endDate: addDate(2, 20, 0),
+    customerName: 'Double A',
+    reservationId: 'KCG708735',
+    status: 'Confirmed',
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+  },
+  {
+    id: 'UHU982477',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g3',
+    vehicleId: 'v11',
+    startDate: addDate(3, 9, 0),
+    endDate: addDate(5, 9, 0),
+    customerName: 'Double B',
+    reservationId: 'UHU982477',
     status: 'Confirmed',
     pickupLocation: 'Narita T1',
     dropoffLocation: 'Narita T1',

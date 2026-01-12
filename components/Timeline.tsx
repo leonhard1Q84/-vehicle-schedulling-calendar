@@ -3,7 +3,7 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { differenceInDays, differenceInHours, addDays, addHours, format, isSameDay, isWeekend, addMinutes } from 'date-fns';
 import { CarGroup, Vehicle, FleetEvent, EventType } from '../types';
 import { CELL_WIDTH, CELL_WIDTH_HOUR, ROW_HEIGHT_STD, EVENT_HEIGHT, EVENT_GAP, HEADER_HEIGHT, getEventColor, checkOverlap } from '../constants';
-import { Snowflake, ChevronLeft, ChevronRight, Layers, NotepadText, ArrowRight, Signal, Share2, Milestone, ChevronDown, Lock, ArrowLeftRight, GripVertical, FileText, Wrench } from 'lucide-react';
+import { Snowflake, ChevronLeft, ChevronRight, Layers, ArrowRight, Signal, Share2, ChevronDown, Lock, ArrowLeftRight, GripVertical, FileText } from 'lucide-react';
 import MoveConfirmModal from './MoveConfirmModal';
 
 // Polyfill startOfDay to fix import error
@@ -383,6 +383,7 @@ const Timeline: React.FC<TimelineProps> = ({
      const isReturned = status.includes('returned') || status.includes('completed');
      const isTempHold = event.type === EventType.STOP_SALE;
      const isOpsLock = event.type === EventType.BLOCK && (event.reason?.toLowerCase().includes('ops') || event.reason?.toLowerCase().includes('lock'));
+     const isBooking = event.type === EventType.BOOKING_ASSIGNED || event.type === EventType.BOOKING_UNASSIGNED;
 
      const isOneWay = event.pickupLocation && event.dropoffLocation && (event.pickupLocation !== event.dropoffLocation);
      const isCrossStore = assignedVehicle && !assignedVehicle.isVirtual && event.pickupLocation && !event.pickupLocation.includes(assignedVehicle.storeId);
@@ -391,7 +392,7 @@ const Timeline: React.FC<TimelineProps> = ({
      const isDraggable = !isLocked && !isMaintenance && !isReturned && !isTempHold && !isOpsLock;
 
      let tooltip = '';
-     if (event.type === EventType.BOOKING_ASSIGNED || event.type === EventType.BOOKING_UNASSIGNED) {
+     if (isBooking) {
          tooltip = `${event.reservationId} | ${event.pickupLocation} -> ${event.dropoffLocation}`;
      } else {
          tooltip = event.maintenanceType || event.reason || 'Event';
@@ -402,72 +403,19 @@ const Timeline: React.FC<TimelineProps> = ({
          if (isTiny) {
              return (
                 <div className="flex w-full justify-center items-center">
-                    {isLocked && <Lock size={10} className="text-white/80" />}
-                    {!isLocked && <div className="w-1.5 h-1.5 rounded-full bg-white/80 shadow-sm"></div>}
+                    {isLocked && isBooking && <Lock size={10} className="text-white/80" />}
+                    {(!isLocked || !isBooking) && <div className="w-1.5 h-1.5 rounded-full bg-white/80 shadow-sm"></div>}
                 </div>
              );
          }
 
-         if (event.type === EventType.BOOKING_ASSIGNED || event.type === EventType.BOOKING_UNASSIGNED) {
-             const isPending = event.type === EventType.BOOKING_UNASSIGNED;
-             
-             // 2. Text Color Logic: 
-             // Default: White
-             // Pending: Amber/Brown
-             // Returned: Slate/Dark (FIXED)
-             let primaryText = 'text-white';
-             let secondaryText = 'text-white/90';
-             let borderClass = 'border-white/20';
-             let iconColor = 'text-white/90';
-
-             if (isPending) {
-                primaryText = 'text-amber-900';
-                secondaryText = 'text-amber-700';
-                borderClass = 'border-amber-900/20';
-                iconColor = 'text-amber-700';
-             } else if (isReturned) {
-                primaryText = 'text-slate-600'; // Darker text for light background
-                secondaryText = 'text-slate-500';
-                borderClass = 'border-slate-300';
-                iconColor = 'text-slate-500';
-             }
-
-             // One way override only for active bookings
-             const pickupColorClass = (isOneWay && !isPending && !isReturned) ? 'text-white/90' : primaryText;
-             const dropoffColorClass = (isOneWay && !isPending && !isReturned) ? 'text-amber-300 font-extrabold' : primaryText;
-
-             return (
-                <div className={`flex flex-row items-center w-full h-full text-[10px] leading-none ${isCroppedLeft ? 'pl-2' : ''} ${isCroppedRight ? 'pr-2' : ''} select-none ${primaryText}`}>
-                    <div className={`flex items-center gap-1.5 flex-shrink-0 mr-2 border-r ${borderClass} pr-2 h-3/4`}>
-                        {hasNotes && <div title={event.notes} className={`${iconColor} flex-shrink-0`}><FileText size={9} /></div>}
-                        {isLocked && <div title="Locked" className={`${iconColor} flex-shrink-0`}><Lock size={9} /></div>}
-                        {isCrossStore && <div title="Cross-store" className="bg-white/90 text-teal-600 rounded-full p-0.5 shadow-sm flex-shrink-0"><Share2 size={9} /></div>}
-                        <span className="font-bold whitespace-nowrap">{event.reservationId}</span>
-                    </div>
-
-                    <div className="flex flex-1 items-center justify-between min-w-0 overflow-hidden text-[9px] whitespace-nowrap px-1">
-                        <div className="flex items-baseline gap-1.5 overflow-hidden">
-                             <span className={`truncate ${pickupColorClass}`}>{event.pickupLocation}</span>
-                             <span className={`font-mono text-[9px] leading-none ${secondaryText}`}>{startTime}</span>
-                        </div>
-
-                        <div className={`flex items-center justify-center px-2 opacity-80 flex-shrink-0 ${isPending ? 'text-amber-800' : (isReturned ? 'text-slate-500' : 'text-white')}`}>
-                             <span className="text-[8px] mr-0.5 opacity-60">→</span>
-                             <span className={`font-mono px-1 rounded text-[9px] leading-tight ${isPending ? 'bg-amber-200/50' : (isReturned ? 'bg-slate-200' : 'bg-black/10')}`}>{durationLabel}</span>
-                             <span className="text-[8px] ml-0.5 opacity-60">→</span>
-                        </div>
-
-                        <div className="flex items-baseline gap-1.5 overflow-hidden justify-end">
-                             <span className={`truncate ${dropoffColorClass}`}>{event.dropoffLocation}</span>
-                             <span className={`font-mono text-[9px] leading-none ${secondaryText}`}>{endTime}</span>
-                        </div>
-                    </div>
-                </div>
-             );
-         }
-
+         // === UNIFIED RENDER STRUCTURE FOR ALL EVENT TYPES ===
+         
+         // 1. Determine Title
          let titleText = '';
-         if (event.type === EventType.MAINTENANCE) {
+         if (isBooking) {
+            titleText = event.reservationId || 'New Res';
+         } else if (event.type === EventType.MAINTENANCE) {
              const woId = event.id.length < 10 ? event.id : 'WO-' + event.id.substring(0,6);
              titleText = `${woId}`; 
              if (event.maintenanceType) titleText += ` | ${event.maintenanceType}`;
@@ -475,30 +423,79 @@ const Timeline: React.FC<TimelineProps> = ({
          } else if (event.type === EventType.STOP_SALE) {
              titleText = `Temp Hold`;
          } else {
-             titleText = event.reason || 'Locked';
+             // Block
+             if (isOpsLock) titleText = 'Ops Lock';
+             else titleText = event.reason || 'Internal Use';
          }
 
-         return (
-            <div className={`flex flex-row items-center w-full h-full text-[10px] leading-none ${isCroppedLeft ? 'pl-2' : ''} ${isCroppedRight ? 'pr-2' : ''} select-none`}>
-                 <div className="flex items-center gap-1.5 flex-shrink-0 mr-2 border-r border-white/20 pr-2 h-3/4">
-                    <span className="font-bold whitespace-nowrap">{titleText}</span>
-                 </div>
+         // 2. Determine Styling Overrides for Bookings
+         const isPending = event.type === EventType.BOOKING_UNASSIGNED;
+         let primaryText = 'text-white';
+         let secondaryText = 'text-white/90';
+         let borderClass = 'border-white/20';
+         let iconColor = 'text-white/90';
 
-                 <div className="flex flex-1 items-center justify-between min-w-0 overflow-hidden text-[9px] whitespace-nowrap px-1">
-                    <div className="flex items-baseline gap-1 overflow-hidden">
-                         <span className="opacity-90 font-mono text-[9px] leading-none">{startTime}</span>
+         if (isPending) {
+            primaryText = 'text-amber-900';
+            secondaryText = 'text-amber-700';
+            borderClass = 'border-amber-900/20';
+            iconColor = 'text-amber-700';
+         } else if (isReturned) {
+            primaryText = 'text-sky-900';
+            secondaryText = 'text-sky-700';
+            borderClass = 'border-sky-300';
+            iconColor = 'text-sky-600';
+         }
+         
+         // One Way Text Color
+         const pickupColorClass = (isBooking && isOneWay && !isPending && !isReturned) ? 'text-white/90' : primaryText;
+         const dropoffColorClass = (isBooking && isOneWay && !isPending && !isReturned) ? 'text-amber-300 font-extrabold' : primaryText;
+
+         // 3. Determine Icons to Show (Strict Rules)
+         // Rule 1: Lock icon ONLY for Locked Bookings
+         const showLock = isBooking && isLocked;
+         // Rule 2: Share icon ONLY for Cross Store Bookings
+         const showCrossStore = isBooking && isCrossStore;
+         // Rule 3: Note icon for ANY event with notes
+         const showNote = !!hasNotes;
+
+         return (
+            <div className={`flex flex-row items-center w-full h-full text-[10px] font-bold leading-none ${isCroppedLeft ? 'pl-2' : ''} ${isCroppedRight ? 'pr-2' : ''} select-none ${primaryText}`}>
+                {/* Left Section: Icons + Title - text-[10px] inherited */}
+                <div className={`flex items-center gap-1.5 flex-shrink-0 mr-2 border-r ${borderClass} pr-2 h-3/4`}>
+                    {/* Icons Section */}
+                    {(showNote || showLock || showCrossStore) && (
+                        <div className="flex items-center gap-0.5">
+                            {showNote && <div title={event.notes} className={`${iconColor} flex-shrink-0`}><FileText size={9} /></div>}
+                            {showLock && <div title="Locked Order" className={`${iconColor} flex-shrink-0`}><Lock size={9} /></div>}
+                            {showCrossStore && <div title="Cross-store" className="bg-white/90 text-teal-600 rounded-full p-0.5 shadow-sm flex-shrink-0"><Share2 size={9} /></div>}
+                        </div>
+                    )}
+                    {/* Title Text */}
+                    <span className="whitespace-nowrap">{titleText}</span>
+                </div>
+
+                {/* Right Section: Time & Locations - STRICT ITEMS-CENTER for vertical alignment */}
+                <div className="flex flex-1 items-center justify-between min-w-0 overflow-hidden px-1 h-full">
+                    {/* Start: Location -> Time (User Requested Flow) */}
+                    <div className="flex items-center gap-1.5 overflow-hidden h-full">
+                         {isBooking && <span className={`truncate ${pickupColorClass}`}>{event.pickupLocation}</span>}
+                         <span className={`font-mono ${secondaryText}`}>{startTime}</span>
                     </div>
 
-                    <div className="flex items-center justify-center px-2 opacity-80 flex-shrink-0">
+                    {/* Duration Middle - Explicitly smaller: text-[9px] */}
+                    <div className={`flex items-center justify-center px-2 opacity-80 flex-shrink-0 h-full ${isPending ? 'text-amber-800' : (isReturned ? 'text-sky-700' : 'text-white')}`}>
                          <span className="text-[8px] mr-0.5 opacity-60">→</span>
-                         <span className="font-mono bg-white/20 px-1 rounded text-[9px] leading-tight">{durationLabel}</span>
+                         <span className={`font-mono text-[9px] px-1 rounded leading-tight ${isPending ? 'bg-amber-200/50' : (isReturned ? 'bg-sky-200' : 'bg-black/10')}`}>{durationLabel}</span>
                          <span className="text-[8px] ml-0.5 opacity-60">→</span>
                     </div>
 
-                    <div className="flex items-baseline gap-1 overflow-hidden justify-end">
-                         <span className="opacity-90 font-mono text-[9px] leading-none">{endTime}</span>
+                    {/* End: Location -> Time (Standard Flow) */}
+                    <div className="flex items-center gap-1.5 overflow-hidden justify-end h-full">
+                         {isBooking && <span className={`truncate ${dropoffColorClass}`}>{event.dropoffLocation}</span>}
+                         <span className={`font-mono ${secondaryText}`}>{endTime}</span>
                     </div>
-                 </div>
+                </div>
             </div>
          );
      };
@@ -607,7 +604,13 @@ const Timeline: React.FC<TimelineProps> = ({
                {groups.map(group => {
                  const groupVehicles = vehiclesByGroup[group.id] || [];
                  const realVehicles = groupVehicles.filter(v => !v.isVirtual);
-                 const virtualVehicles = groupVehicles.filter(v => v.isVirtual); // Always render virtual vehicles to fix drag bug
+                 
+                 // Show virtual vehicles ONLY if dragging OR if they already have events
+                 const virtualVehicles = groupVehicles.filter(v => {
+                    if (!v.isVirtual) return false;
+                    const hasEvents = events.some(e => e.vehicleId === v.id);
+                    return isDraggingEvent || hasEvents;
+                 });
                  
                  const queueKeys = pendingQueuesByGroup.get(group.id) || [];
                  const isCollapsed = collapsedGroups.has(group.id);
@@ -667,7 +670,7 @@ const Timeline: React.FC<TimelineProps> = ({
                             {virtualVehicles.map(v => {
                                 const layout = rowLayouts.get(v.id);
                                 return (
-                                    <div key={v.id} style={{ height: layout?.height }} className="flex flex-col justify-center px-3 border-b border-gray-100 bg-amber-50/10 relative">
+                                    <div key={v.id} style={{ height: layout?.height }} className="flex flex-col justify-center px-3 border-b border-gray-100 bg-amber-50/10 relative animate-in slide-in-from-top-2 fade-in duration-200">
                                         <div className="flex items-center justify-between">
                                              <div className="flex items-center gap-1.5 text-amber-600">
                                                  <ArrowLeftRight size={12} />
@@ -742,7 +745,13 @@ const Timeline: React.FC<TimelineProps> = ({
                  {groups.map(group => {
                     const groupVehicles = vehiclesByGroup[group.id] || [];
                     const realVehicles = groupVehicles.filter(v => !v.isVirtual);
-                    const virtualVehicles = groupVehicles.filter(v => v.isVirtual); // Always render virtual vehicles
+                    
+                    // Show virtual vehicles ONLY if dragging OR if they already have events
+                    const virtualVehicles = groupVehicles.filter(v => {
+                        if (!v.isVirtual) return false;
+                        const hasEvents = events.some(e => e.vehicleId === v.id);
+                        return isDraggingEvent || hasEvents;
+                    });
                     
                     const queueKeys = pendingQueuesByGroup.get(group.id) || [];
                     const isCollapsed = collapsedGroups.has(group.id);
@@ -799,7 +808,7 @@ const Timeline: React.FC<TimelineProps> = ({
                                         <div 
                                             key={v.id} 
                                             style={{ height: layout?.height }} 
-                                            className="relative w-full border-b border-gray-100 pointer-events-auto bg-amber-50/10" 
+                                            className="relative w-full border-b border-gray-100 pointer-events-auto bg-amber-50/10 animate-in slide-in-from-top-2 fade-in duration-200" 
                                             onDragOver={(e) => {e.preventDefault(); e.dataTransfer.dropEffect = 'move'}} 
                                             onDrop={(e) => handleDropOnVehicle(e, v.id)}
                                         >
@@ -853,7 +862,7 @@ const Timeline: React.FC<TimelineProps> = ({
                 </button>
                  {/* Returned */}
                  <button onClick={() => toggleStatusFilter('RETURNED')} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-all ${getLegendClass('RETURNED')}`}>
-                    <span className="w-2.5 h-2.5 bg-slate-100 border border-slate-200 rounded-sm"></span>
+                    <span className="w-2.5 h-2.5 bg-sky-100 border border-sky-300 rounded-sm shadow-sm"></span>
                     <span className="text-gray-600 font-medium">Returned</span>
                 </button>
             </div>
@@ -874,12 +883,12 @@ const Timeline: React.FC<TimelineProps> = ({
                 </button>
                 {/* Internal Use */}
                 <button onClick={() => toggleStatusFilter('INTERNAL')} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-all ${getLegendClass('INTERNAL')}`}>
-                    <span className="w-2.5 h-2.5 bg-purple-600 rounded-sm shadow-sm"></span>
+                    <span className="w-2.5 h-2.5 bg-cyan-600 rounded-sm shadow-sm"></span>
                     <span className="text-gray-600 font-medium">Internal Use</span>
                 </button>
                  {/* Ops Lock */}
                  <button onClick={() => toggleStatusFilter('OPS_LOCK')} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-all ${getLegendClass('OPS_LOCK')}`}>
-                    <span className="w-2.5 h-2.5 bg-pink-600 rounded-sm shadow-sm"></span>
+                    <span className="w-2.5 h-2.5 bg-purple-600 rounded-sm shadow-sm"></span>
                     <span className="text-gray-600 font-medium">Ops Lock</span>
                 </button>
             </div>

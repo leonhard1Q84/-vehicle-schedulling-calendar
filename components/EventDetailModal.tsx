@@ -230,13 +230,15 @@ const EventDetailModal: React.FC<ExtendedEventModalProps> = ({
       case EventType.STOP_SALE:
         return renderStopSaleContent();
       default: // BLOCK
+         const isOpsLock = event.reason?.toLowerCase().includes('ops') || event.reason?.toLowerCase().includes('lock') || event.reason?.toLowerCase().includes('operation');
+         const blockColorClass = isOpsLock ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-cyan-50 text-cyan-700 border-cyan-100';
          return (
           <div className="space-y-4">
              <div>
                 <label className="text-gray-400 text-[10px] uppercase font-bold tracking-wider flex items-center gap-2 mb-1">
                   <Lock size={14} /> Internal Hold
                 </label>
-                <div className="text-purple-700 font-semibold bg-purple-50 p-3 rounded border border-purple-100">{event.reason}</div>
+                <div className={`font-semibold p-3 rounded border ${blockColorClass}`}>{event.reason}</div>
             </div>
              <div className="grid grid-cols-2 gap-4">
                <div>

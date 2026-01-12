@@ -133,7 +133,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
 
               <button 
                 onClick={() => setType('INTERNAL')}
-                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${type === 'INTERNAL' ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500' : 'bg-white border-gray-200 hover:border-blue-300 text-gray-600'}`}
+                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${type === 'INTERNAL' ? 'bg-cyan-50 border-cyan-500 text-cyan-700 ring-1 ring-cyan-500' : 'bg-white border-gray-200 hover:border-cyan-300 text-gray-600'}`}
               >
                 <AlertCircle size={20} className="mb-2" />
                 <span className="text-xs font-medium">Internal Use</span>
