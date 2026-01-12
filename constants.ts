@@ -1,0 +1,323 @@
+
+import { CarGroup, EventType, FleetEvent, Vehicle } from "./types";
+
+// Configuration
+export const CELL_WIDTH = 140; 
+export const CELL_WIDTH_HOUR = 60;
+export const HEADER_HEIGHT = 66; 
+export const ROW_HEIGHT_STD = 50; 
+export const EVENT_HEIGHT = 38;   
+export const EVENT_GAP = 6;       
+
+// Helper to get color based on Type AND Status AND Vehicle Context
+export const getEventColor = (event: FleetEvent, vehicle?: Vehicle): string => {
+  const status = event.status?.toLowerCase() || '';
+
+  // 1. History / Returned (已还车) - Universal Grey
+  if (status.includes('returned') || status.includes('completed') || status.includes('done') || status.includes('past')) {
+    return 'bg-slate-100 text-slate-500 border border-slate-200'; 
+  }
+
+  switch (event.type) {
+    case EventType.BOOKING_UNASSIGNED:
+      // Pending (待分配) - Light Amber/Yellow
+      return 'bg-amber-100 text-amber-800 border border-amber-300 shadow-sm font-medium'; 
+    
+    case EventType.BOOKING_ASSIGNED:
+      // 2. Picked Up (已取车) - Indigo
+      if (status.includes('picked up') || status.includes('active')) {
+          return 'bg-indigo-600 text-white shadow-md border border-indigo-700 z-20'; 
+      }
+      
+      // 3. Assigned (已分配/预订) - Blue
+      return 'bg-blue-500 text-white shadow-sm hover:bg-blue-600 transition-colors border border-blue-600'; 
+
+    case EventType.MAINTENANCE:
+      // Maint (维修保养) - Slate Gray
+      return 'bg-slate-600 text-white shadow-sm border border-slate-700'; 
+
+    case EventType.STOP_SALE:
+      // Temp Hold (临时控量) - Orange (Changed from Red)
+      return 'bg-orange-500 text-white shadow-sm border border-orange-600'; 
+
+    case EventType.BLOCK:
+      // Distinguish Internal Use vs Ops Lock based on reason
+      const reason = event.reason?.toLowerCase() || '';
+      // Ops Lock (运营锁定) - Pink
+      if (reason.includes('operation') || reason.includes('ops') || reason.includes('lock')) {
+          return 'bg-pink-600 text-white shadow-sm border border-pink-700'; 
+      }
+      // Internal Use (内部使用) - Purple
+      return 'bg-purple-600 text-white shadow-sm border border-purple-700'; 
+
+    default:
+      return 'bg-gray-500 text-white';
+  }
+};
+
+export const EVENT_LABELS: Record<EventType, string> = {
+  [EventType.BOOKING_ASSIGNED]: 'Reservation',
+  [EventType.BOOKING_UNASSIGNED]: 'Pending',
+  [EventType.MAINTENANCE]: 'Maintenance',
+  [EventType.STOP_SALE]: 'Temp Hold', // Renamed from Stop Sale
+  [EventType.BLOCK]: 'Block',
+};
+
+// Helper: Check date overlap
+export const checkOverlap = (
+  start1: string, 
+  end1: string, 
+  start2: string, 
+  end2: string
+): boolean => {
+  const s1 = new Date(start1).getTime();
+  const e1 = new Date(end1).getTime();
+  const s2 = new Date(start2).getTime();
+  const e2 = new Date(end2).getTime();
+  // Ensure strict overlap check
+  return s1 < e2 && s2 < e1;
+};
+
+// Mock Data
+export const MOCK_GROUPS: CarGroup[] = [
+  { id: 'g1', name: 'ECONOMY (GROUP A)' },
+  { id: 'g2', name: 'COMPACT (GROUP B)' },
+  { id: 'g3', name: 'SUV (GROUP C)' },
+];
+
+export const MOCK_VEHICLES: Vehicle[] = [
+  // --- Group 1: Economy ---
+  { id: 'v1', plate: '成田300わ2234', model: 'Toyota Yaris', sipp: 'ECMR', color: 'White', groupId: 'g1', status: 'available', storeId: 'Narita', features: ['snow_tires', 'telematics'] },
+  { id: 'v2', plate: '成田300わ2382', model: 'Honda Fit', sipp: 'ECMR', color: 'Silver', groupId: 'g1', status: 'available', storeId: 'Narita', features: ['telematics'] },
+  { id: 'v3', plate: '成田300わ2404', model: 'Nissan Note', sipp: 'ECAR', color: 'Blue', groupId: 'g1', status: 'maintenance', storeId: 'Narita' },
+  { id: 'v4', plate: '成田300わ2435', model: 'Toyota Yaris', sipp: 'ECMR', color: 'White', groupId: 'g1', status: 'available', storeId: 'Narita', features: ['snow_tires'] }, 
+  { id: 'v5', plate: '成田300わ2427', model: 'Toyota Yaris', sipp: 'ECMR', color: 'Black', groupId: 'g1', status: 'backup', storeId: 'Narita' },
+  
+  // Virtual Buffer for Group 1
+  { id: 'v_buffer_g1', plate: 'Swap Buffer', model: 'Pool', sipp: '----', color: '', groupId: 'g1', status: 'available', storeId: 'Narita', isVirtual: true },
+
+  // --- Group 2: Compact ---
+  { id: 'v6', plate: '成田300わ2438', model: 'Toyota Corolla', sipp: 'CDAR', color: 'Black', groupId: 'g2', status: 'available', storeId: 'Narita', features: ['telematics'] },
+  { id: 'v7', plate: '成田300わ2439', model: 'Mazda 3', sipp: 'CDMR', color: 'Red', groupId: 'g2', status: 'available', storeId: 'Narita' },
+  { id: 'v8', plate: '成田300わ2443', model: 'Mazda 3', sipp: 'CDMR', color: 'Silver', groupId: 'g2', status: 'available', storeId: 'Narita' },
+  { id: 'v9', plate: '成田300わ2444', model: 'Honda Civic', sipp: 'CDAR', color: 'White', groupId: 'g2', status: 'backup', storeId: 'Narita' },
+  
+  // Virtual Buffer for Group 2
+  { id: 'v_buffer_g2', plate: 'Swap Buffer', model: 'Pool', sipp: '----', color: '', groupId: 'g2', status: 'available', storeId: 'Narita', isVirtual: true },
+
+  // --- Group 3: SUV ---
+  { id: 'v10', plate: '成田300わ2463', model: 'Toyota RAV4', sipp: 'IFAR', color: 'Grey', groupId: 'g3', status: 'available', storeId: 'Narita', features: ['snow_tires', 'telematics'] },
+  { id: 'v11', plate: '成田300わ2507', model: 'Toyota RAV4', sipp: 'IFAR', color: 'Black', groupId: 'g3', status: 'available', storeId: 'Narita' },
+
+  // Virtual Buffer for Group 3
+  { id: 'v_buffer_g3', plate: 'Swap Buffer', model: 'Pool', sipp: '----', color: '', groupId: 'g3', status: 'available', storeId: 'Narita', isVirtual: true },
+];
+
+const today = new Date();
+const addDays = (days: number) => {
+  const d = new Date(today);
+  d.setDate(d.getDate() + days);
+  d.setHours(12, 0, 0, 0); // Default middle of day
+  return d.toISOString();
+};
+
+const addDate = (days: number, hours: number = 10, minutes: number = 0) => {
+  const d = new Date(today);
+  d.setDate(d.getDate() + days);
+  d.setHours(hours, minutes, 0, 0);
+  return d.toISOString();
+};
+
+export const MOCK_EVENTS: FleetEvent[] = [
+  // --- PENDING EVENTS (Mock Data Added) ---
+  {
+    id: 'pending_1',
+    type: EventType.BOOKING_UNASSIGNED,
+    groupId: 'g1',
+    vehicleId: null,
+    startDate: addDate(1, 10, 0),
+    endDate: addDate(4, 10, 0),
+    customerName: 'Pending Guest A',
+    reservationId: 'PND-1001',
+    status: 'Pending Assignment',
+    modelPreference: 'Toyota Yaris',
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+  },
+  {
+    id: 'pending_2',
+    type: EventType.BOOKING_UNASSIGNED,
+    groupId: 'g2',
+    vehicleId: null,
+    startDate: addDate(2, 14, 0),
+    endDate: addDate(5, 12, 0),
+    customerName: 'Pending Guest B',
+    reservationId: 'PND-1002',
+    status: 'Pending Assignment',
+    modelPreference: 'Mazda 3',
+    pickupLocation: 'Haneda',
+    dropoffLocation: 'Haneda',
+  },
+
+  // --- Group 1 Events ---
+  // Past Booking (Returned)
+  {
+    id: 'e_past_1',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g1',
+    vehicleId: 'v1',
+    startDate: addDate(-5, 9, 0),
+    endDate: addDate(-2, 18, 0),
+    customerName: 'History Log',
+    reservationId: 'JRT624503',
+    status: 'Returned', 
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+  },
+  // Current One-Way (Picked Up)
+  {
+    id: 'e1',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g1',
+    vehicleId: 'v1', 
+    startDate: addDate(-1, 14, 0),
+    endDate: addDate(4, 10, 0),
+    customerName: 'Tanaka Sato',
+    reservationId: 'RES-2001',
+    status: 'Picked Up', 
+    pickupLocation: 'Narita T2',
+    dropoffLocation: 'Narita T2', 
+    isLocked: true 
+  },
+  
+  // Maintenance
+  {
+    id: 'UEU655091', 
+    type: EventType.MAINTENANCE,
+    groupId: 'g1',
+    vehicleId: 'v3', 
+    startDate: addDate(-2, 8, 0),
+    endDate: addDate(6, 18, 0),
+    maintenanceType: 'Inspection',
+    status: 'In Progress',
+    notes: 'Routine 6-month safety check. Check brake pads.',
+  },
+
+  // Temp Hold (Previously Stop Sale)
+  {
+    id: 'temp_hold_1',
+    type: EventType.STOP_SALE,
+    groupId: 'g1',
+    vehicleId: 'v5',
+    startDate: addDate(0, 9, 0),
+    endDate: addDate(3, 18, 0),
+    status: 'Hold',
+    reason: 'Inventory Control',
+    notes: 'Holding for potential VIP group overflow.'
+  },
+
+  // --- Group 2 Events ---
+  // Corolla - Active
+  {
+    id: 'res-2001',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g2',
+    vehicleId: 'v6',
+    startDate: addDate(-1, 9, 0),
+    endDate: addDate(2, 18, 0),
+    customerName: 'Liu Wei',
+    reservationId: 'RES-2001',
+    status: 'Picked Up',
+    pickupLocation: 'Narita T2',
+    dropoffLocation: 'Narita T2',
+  },
+
+  // Mazda 3 2439 - Two Bookings
+  {
+    id: 'res-2005',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g2',
+    vehicleId: 'v7',
+    startDate: addDate(0, 10, 0),
+    endDate: addDate(2, 10, 0),
+    customerName: 'Emily Clark',
+    reservationId: 'RES-2005',
+    status: 'Returned', 
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+  },
+  {
+    id: 'res-2008',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g2',
+    vehicleId: 'v7',
+    startDate: addDate(2, 8, 0),
+    endDate: addDate(4, 20, 0),
+    customerName: 'Hiroshi T.',
+    reservationId: 'RES-2008',
+    status: 'Confirmed', 
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+  },
+  
+  // Mazda 3 2443 - VIP Lock -> Internal Use
+  {
+    id: 'e_g2_locked_new',
+    type: EventType.BLOCK, // Changed to BLOCK for Internal Use example
+    groupId: 'g2',
+    vehicleId: 'v8', 
+    startDate: addDate(1, 14, 0),
+    endDate: addDate(4, 10, 0),
+    customerName: 'VIP Guest',
+    reason: 'Internal Use', // Should be Purple
+    status: 'Confirmed',
+    isLocked: true,
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+    notes: 'VIP Client'
+  },
+
+  // Civic - Cross Store -> Ops Lock
+  {
+    id: 'e_g2_cross_new',
+    type: EventType.BLOCK, // Changed to BLOCK for Ops Lock example
+    groupId: 'g2',
+    vehicleId: 'v9', 
+    startDate: addDate(2, 9, 0),
+    endDate: addDate(5, 18, 0),
+    reason: 'Ops Lock', // Should be Pink
+    status: 'Confirmed',
+  },
+
+  // --- Group 3 Events ---
+  // RAV4 - Long Rental
+  {
+    id: 'e6',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g3',
+    vehicleId: 'v10', 
+    startDate: addDate(-2, 14, 0),
+    endDate: addDate(8, 10, 0),
+    customerName: 'Wang L.',
+    reservationId: 'RES-2022',
+    status: 'Picked Up',
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T2',
+    isLocked: true,
+  },
+
+  // v11 short
+  {
+    id: 'e7',
+    type: EventType.BOOKING_ASSIGNED,
+    groupId: 'g3',
+    vehicleId: 'v11',
+    startDate: addDate(1, 12, 0),
+    endDate: addDate(3, 12, 0),
+    customerName: 'Sarah J.',
+    reservationId: 'RES-3001',
+    status: 'Confirmed',
+    pickupLocation: 'Narita T1',
+    dropoffLocation: 'Narita T1',
+  },
+];
